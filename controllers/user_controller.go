@@ -57,3 +57,26 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, response)
 }
+
+func (uc *UserController) GetProfile(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authorized"})
+		return
+	}
+
+	var user models.User
+	result := uc.DB.First(&user, userID)
+	if err := result.Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":    user.ID,
+			"name":  user.Name,
+			"email": user.Email,
+		},
+	})
+}
