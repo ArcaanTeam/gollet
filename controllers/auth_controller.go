@@ -4,6 +4,7 @@ import (
 	"gollet/models"
 	"gollet/utils"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -26,6 +27,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 	var input LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
 	}
 
 	var user models.User
@@ -39,8 +41,11 @@ func (ac *AuthController) Login(c *gin.Context) {
 		return
 	}
 
-	// TODO: generate token properly
-	token := "generated-jwt-token"
+	token, err := utils.GenerateJwtToken(strconv.Itoa(int(user.ID)), user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
