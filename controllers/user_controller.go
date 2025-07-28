@@ -1,0 +1,59 @@
+package controllers
+
+import (
+	"gollet/models"
+	"gollet/utils"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
+)
+
+type UserController struct {
+	DB *gorm.DB
+}
+
+type CreateUserInput struct {
+	Name     string `json:"name" binding:"required"`
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required,min=6"`
+}
+
+func NewUserController(db *gorm.DB) *UserController {
+	return &UserController{DB: db}
+}
+
+func (uc *UserController) CreateUser(c *gin.Context) {
+	var input CreateUserInput
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err})
+		return
+	}
+
+	// Hash Password
+	hashedPassword, err := utils.HashPassword(input.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
+		return
+	}
+
+	user := models.User{
+		Name:         input.Name,
+		Email:        input.Email,
+		PasswordHash: hashedPassword,
+	}
+
+	if err := uc.DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not create user entry on database"})
+		return
+	}
+
+	response := gin.H{
+		"id":    user.ID,
+		"name":  user.Name,
+		"email": user.Email,
+	}
+
+	c.JSON(http.StatusCreated, response)
+}
