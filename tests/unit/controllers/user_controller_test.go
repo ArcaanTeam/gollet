@@ -68,7 +68,7 @@ func TestPromoteUser(t *testing.T) {
 		t.Fatal("Failed to marshal the payload:", err.Error())
 	}
 	req, _ := http.NewRequest(
-		"POST",
+		"PUT",
 		fmt.Sprintf(
 			"/users/%s/promote",
 			strconv.FormatUint(uint64(regularUser.ID), 10),
