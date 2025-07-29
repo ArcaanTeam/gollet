@@ -17,6 +17,7 @@ type CreateUserInput struct {
 	Name     string `json:"name" binding:"required"`
 	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required,min=6"`
+	Role     string `json:"role"`
 }
 
 func NewUserController(db *gorm.DB) *UserController {
@@ -53,6 +54,7 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		"id":    user.ID,
 		"name":  user.Name,
 		"email": user.Email,
+		"role":  user.Role,
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -77,6 +79,18 @@ func (uc *UserController) GetProfile(c *gin.Context) {
 			"id":    user.ID,
 			"name":  user.Name,
 			"email": user.Email,
+			"role":  user.Role,
 		},
+	})
+}
+
+func (uc *UserController) GetUsers(c *gin.Context) {
+	var users []models.User
+	if err := uc.DB.Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"users": users,
 	})
 }
