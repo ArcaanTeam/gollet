@@ -38,6 +38,7 @@ func GetTestRouter(db *gorm.DB) *gin.Engine {
 	{
 		usersGroup.POST("", userController.CreateUser)
 		usersGroup.GET("", userController.GetUsers)
+		usersGroup.PUT("/:id/promote", userController.PromoteUser)
 	}
 
 	router.POST("/login", authController.Login)
