@@ -25,6 +25,7 @@ func main() {
 	{
 		usersGroup.POST("", userController.CreateUser)
 		usersGroup.GET("", userController.GetUsers)
+		usersGroup.PUT("/:id/promote", userController.PromoteUser)
 	}
 
 	r.POST("/login", authController.Login)
