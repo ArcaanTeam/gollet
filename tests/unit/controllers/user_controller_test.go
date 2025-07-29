@@ -70,7 +70,7 @@ func TestPromoteUser(t *testing.T) {
 	req, _ := http.NewRequest(
 		"POST",
 		fmt.Sprintf(
-			"/admin/users/%s/promote",
+			"/users/%s/promote",
 			strconv.FormatUint(uint64(regularUser.ID), 10),
 		),
 		bytes.NewBuffer(marshaledPayload),
