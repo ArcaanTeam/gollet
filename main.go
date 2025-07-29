@@ -5,6 +5,7 @@ import (
 	"gollet/controllers"
 	"gollet/db"
 	"gollet/middlewares"
+	"gollet/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,8 +20,15 @@ func main() {
 
 	r := gin.Default()
 
-	r.POST("/users", userController.CreateUser)
+	usersGroup := r.Group("/users")
+	usersGroup.Use(middlewares.JwtAuthMiddleware(), middlewares.RBAC(models.RoleAdmin))
+	{
+		usersGroup.POST("", userController.CreateUser)
+		usersGroup.GET("", userController.GetUsers)
+	}
+
 	r.POST("/login", authController.Login)
+
 	protectedRoutes := r.Group("/")
 	protectedRoutes.Use(middlewares.JwtAuthMiddleware())
 	{
