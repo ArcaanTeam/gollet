@@ -1,8 +1,7 @@
 package tests
 
 import (
-	"gollet/api/controllers"
-	"gollet/api/middlewares"
+	"gollet/api/routes"
 	"gollet/models"
 	"testing"
 
@@ -28,28 +27,15 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 
 func GetTestRouter(db *gorm.DB) *gin.Engine {
 	gin.SetMode(gin.TestMode)
-	router := gin.New()
+	engine := gin.New()
 
-	authController := controllers.NewAuthController(db)
-	userController := controllers.NewUserController(db)
+	userRoutes := routes.NewUserRoutes(db, engine)
+	authRoutes := routes.NewAuthRoutes(db, engine)
 
-	usersGroup := router.Group("/users")
-	usersGroup.Use(middlewares.JwtAuthMiddleware(), middlewares.RBAC(models.RoleAdmin))
-	{
-		usersGroup.POST("", userController.CreateUser)
-		usersGroup.GET("", userController.GetUsers)
-		usersGroup.PUT("/:id/promote", userController.PromoteUser)
-	}
+	userRoutes.Setup()
+	authRoutes.Setup()
 
-	router.POST("/login", authController.Login)
-
-	protectedRoutes := router.Group("/")
-	protectedRoutes.Use(middlewares.JwtAuthMiddleware())
-	{
-		protectedRoutes.GET("/profile", userController.GetProfile)
-	}
-
-	return router
+	return engine
 }
 
 func TeardownTestDB(t *testing.T, db *gorm.DB) {
