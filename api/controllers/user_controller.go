@@ -10,19 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserController interface {
-	CreateUser(ctx *gin.Context)
-	UpdateUser(ctx *gin.Context)
-	GetUserByID(ctx *gin.Context)
-	GetProfile(ctx *gin.Context)
-	GetUsers(ctx *gin.Context)
-}
-
 type userController struct {
 	s services.UserService
 }
 
-func NewUserController(service services.UserService) UserController {
+func NewUserController(service services.UserService) *userController {
 	return &userController{s: service}
 }
 

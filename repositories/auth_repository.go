@@ -6,6 +6,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// HINT: interface is for bypassing DI
+// FIXME: Move to auth service package
 type AuthRepository interface {
 	GetUserByEmail(email string) (*models.User, error)
 }

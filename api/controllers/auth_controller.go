@@ -9,10 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type AuthController interface {
-	Login(ctx *gin.Context)
-}
-
 type authController struct {
 	s services.AuthService
 }
@@ -29,6 +25,7 @@ func (c *authController) Login(ctx *gin.Context) {
 	}
 
 	token, user, err := c.s.Login(input)
+	// FIXME: move error handling to error middleware
 	if err != nil {
 		var statusCode int
 		errorString := err.Error()
