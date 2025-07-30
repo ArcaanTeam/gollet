@@ -1,40 +1,24 @@
 package main
 
 import (
+	"gollet/api/routes"
 	"gollet/config"
-	"gollet/controllers"
-	"gollet/db"
-	"gollet/middlewares"
-	"gollet/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	config.LoadConfig()
-	db.InitDB()
-	db.Migrate()
+	config.InitDB()
+	config.Migrate()
 
-	userController := controllers.NewUserController(db.DB)
-	authController := controllers.NewAuthController(db.DB)
+	engine := gin.Default()
 
-	r := gin.Default()
+	userRoutes := routes.NewUserRoutes(config.DB, engine)
+	userRoutes.Setup()
 
-	usersGroup := r.Group("/users")
-	usersGroup.Use(middlewares.JwtAuthMiddleware(), middlewares.RBAC(models.RoleAdmin))
-	{
-		usersGroup.POST("", userController.CreateUser)
-		usersGroup.GET("", userController.GetUsers)
-		usersGroup.PUT("/:id/promote", userController.PromoteUser)
-	}
+	authRoutes := routes.NewAuthRoutes(config.DB, engine)
+	authRoutes.Setup()
 
-	r.POST("/login", authController.Login)
-
-	protectedRoutes := r.Group("/")
-	protectedRoutes.Use(middlewares.JwtAuthMiddleware())
-	{
-		protectedRoutes.GET("/profile", userController.GetProfile)
-	}
-
-	r.Run(":8080")
+	engine.Run(":8080")
 }
