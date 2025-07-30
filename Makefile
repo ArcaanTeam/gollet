@@ -4,11 +4,11 @@ test: test-unit test-integration
 
 test-unit:
 		@echo "Running unit tests..."
-		@go test -v ./tests/unit/...
+		@go test -v ./internal/tests/unit/...
 
 test-integration:
 		@echo "Running integration tests..."
-		@go test -v ./tests/integration/...
+		@go test -v ./internal/tests/integration/...
 
 test-coverage:
 		@echo "Running tests with coverage..."
