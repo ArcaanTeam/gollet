@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"fmt"
-	"gollet/models"
+	"gollet/api/payloads"
+	"gollet/services"
 	"gollet/utils"
 	"net/http"
 
@@ -10,72 +10,119 @@ import (
 	"gorm.io/gorm"
 )
 
-type UserController struct {
-	DB *gorm.DB
+type UserController interface {
+	CreateUser(ctx *gin.Context)
+	UpdateUser(ctx *gin.Context)
+	GetUserByID(ctx *gin.Context)
+	GetProfile(ctx *gin.Context)
+	GetUsers(ctx *gin.Context)
 }
 
-type CreateUserInput struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required,min=6"`
-	Role     string `json:"role"`
+type userController struct {
+	s services.UserService
 }
 
-func NewUserController(db *gorm.DB) *UserController {
-	return &UserController{DB: db}
+func NewUserController(service services.UserService) UserController {
+	return &userController{s: service}
 }
 
-func (uc *UserController) CreateUser(c *gin.Context) {
-	var input CreateUserInput
-
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err})
-		return
+func (c *userController) CreateUser(ctx *gin.Context) {
+	var input payloads.CreateUserInput
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "malformed request body",
+			"details": err.Error(),
+		})
 	}
 
-	// Hash Password
-	hashedPassword, err := utils.HashPassword(input.Password)
+	createdUser, err := c.s.CreateUser(input)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not hash password"})
-		return
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "unable to create user",
+			"details": err.Error(),
+		})
 	}
 
-	user := models.User{
-		Name:         input.Name,
-		Email:        input.Email,
-		PasswordHash: hashedPassword,
-	}
-
-	if err := uc.DB.Create(&user).Error; err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Could not create user entry on database"})
-		return
-	}
-
-	response := gin.H{
-		"id":    user.ID,
-		"name":  user.Name,
-		"email": user.Email,
-		"role":  user.Role,
-	}
-
-	c.JSON(http.StatusCreated, response)
+	ctx.JSON(http.StatusCreated, createdUser)
 }
 
-func (uc *UserController) GetProfile(c *gin.Context) {
-	userID, exists := c.Get("userID")
+func (c *userController) UpdateUser(ctx *gin.Context) {
+	userIdString, _, err := utils.GetIdParam(ctx)
+	if err != nil {
+		return
+	}
+
+	var input payloads.UpdateUserInput
+	if err := ctx.ShouldBindJSON(&input); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+	}
+
+	updatedUser, err := c.s.UpdateUser(userIdString, input)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "unable to update user",
+			"details": err.Error(),
+		})
+	}
+	ctx.JSON(http.StatusOK, updatedUser)
+}
+
+func (c *userController) GetUserByID(ctx *gin.Context) {
+	idString, _, err := utils.GetIdParam(ctx)
+	if err != nil {
+		return
+	}
+
+	user, err := c.s.GetUserByID(idString)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error":   "user not found",
+				"details": "",
+			})
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "internal server error",
+				"details": err.Error(),
+			})
+		}
+	}
+
+	ctx.JSON(http.StatusOK, user)
+}
+
+func (c *userController) GetProfile(ctx *gin.Context) {
+	userID, exists := ctx.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authorized"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authorized"})
 		return
 	}
 
-	var user models.User
-	result := uc.DB.First(&user, userID)
-	if err := result.Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
-		return
+	userIdString, ok := userID.(string)
+	if !ok {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"error":   "invalid user id",
+			"details": "",
+		})
+	}
+	user, err := c.s.GetUserByID(userIdString)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			ctx.JSON(http.StatusNotFound, gin.H{
+				"error":   "user not found",
+				"details": "",
+			})
+		} else {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"error":   "internal server error",
+				"details": err.Error(),
+			})
+		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	ctx.JSON(http.StatusOK, gin.H{
 		"user": gin.H{
 			"id":    user.ID,
 			"name":  user.Name,
@@ -85,58 +132,14 @@ func (uc *UserController) GetProfile(c *gin.Context) {
 	})
 }
 
-func (uc *UserController) GetUsers(c *gin.Context) {
-	var users []models.User
-	if err := uc.DB.Find(&users).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+func (c *userController) GetUsers(ctx *gin.Context) {
+	users, err := c.s.GetUsers()
+	if err != nil {
+		// TODO: handle not-found branch separately
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
+	ctx.JSON(http.StatusOK, gin.H{
 		"users": users,
-	})
-}
-
-func (uc *UserController) PromoteUser(c *gin.Context) {
-	userToUpdateId := c.Param("id")
-	if len(userToUpdateId) < 1 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "`id` param is not provided in url"})
-		return
-	}
-
-	var payload struct {
-		NewRole string `json:"new_role"`
-	}
-
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(
-			http.StatusBadRequest,
-			gin.H{"error": "'new_role' field is missing in body"},
-		)
-		return
-	}
-
-	var userToUpdate models.User
-	if err := uc.DB.First(&userToUpdate, "id = ?", userToUpdateId).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   fmt.Sprintf("Failed to find user with id: %s", userToUpdateId),
-			"details": err.Error(),
-		})
-	}
-
-	if err := uc.DB.Model(&userToUpdate).Update("role", payload.NewRole).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   fmt.Sprintf("Failed to update user %s", userToUpdateId),
-			"details": err.Error(),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":    userToUpdate.ID,
-			"name":  userToUpdate.Name,
-			"email": userToUpdate.Email,
-			"role":  userToUpdate.Role,
-		},
 	})
 }
