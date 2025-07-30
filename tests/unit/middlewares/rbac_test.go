@@ -1,7 +1,7 @@
 package middlewares_test
 
 import (
-	"gollet/middlewares"
+	"gollet/api/middlewares"
 	"net/http"
 	"net/http/httptest"
 	"testing"

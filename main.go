@@ -1,10 +1,10 @@
 package main
 
 import (
+	"gollet/api/controllers"
+	"gollet/api/middlewares"
 	"gollet/config"
-	"gollet/controllers"
 	"gollet/db"
-	"gollet/middlewares"
 	"gollet/models"
 
 	"github.com/gin-gonic/gin"

@@ -1,8 +1,8 @@
 package tests
 
 import (
-	"gollet/controllers"
-	"gollet/middlewares"
+	"gollet/api/controllers"
+	"gollet/api/middlewares"
 	"gollet/models"
 	"testing"
 
