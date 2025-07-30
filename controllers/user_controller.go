@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"gollet/models"
 	"gollet/utils"
 	"net/http"
@@ -92,5 +93,50 @@ func (uc *UserController) GetUsers(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"users": users,
+	})
+}
+
+func (uc *UserController) PromoteUser(c *gin.Context) {
+	userToUpdateId := c.Param("id")
+	if len(userToUpdateId) < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "`id` param is not provided in url"})
+		return
+	}
+
+	var payload struct {
+		NewRole string `json:"new_role"`
+	}
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{"error": "'new_role' field is missing in body"},
+		)
+		return
+	}
+
+	var userToUpdate models.User
+	if err := uc.DB.First(&userToUpdate, "id = ?", userToUpdateId).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   fmt.Sprintf("Failed to find user with id: %s", userToUpdateId),
+			"details": err.Error(),
+		})
+	}
+
+	if err := uc.DB.Model(&userToUpdate).Update("role", payload.NewRole).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   fmt.Sprintf("Failed to update user %s", userToUpdateId),
+			"details": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"id":    userToUpdate.ID,
+			"name":  userToUpdate.Name,
+			"email": userToUpdate.Email,
+			"role":  userToUpdate.Role,
+		},
 	})
 }
